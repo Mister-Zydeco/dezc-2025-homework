@@ -1,0 +1,125 @@
+
+1. Answer: 24.3.1
+
+The command below (don't type the "$", that's my shell prompt) spins
+up a python:3.12.8 container locally and runs "pip --version" on it:
+
+    $ docker run --entrypoint pip python:3.12.8 --version
+
+The output of that command is:
+
+    pip 24.3.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)
+
+2. Answer: db:5432 
+
+The given Dockerfile defines services "db" and "pgadmin".  When we spin up these services by invoking "docker-compose up -d", docker-compose creates a network. From Networking in Compose:
+    By default Compose sets up a single network for your app. Each container for a service joins the default network and is both reachable by other containers on that network, and discoverable by the service's name.
+
+LOADING OF POSTGRES:
+
+All these commands should be run on the local machine. THey should work
+on any non-ancient version of Linux or MacOS.
+
+With the Dockerfile provided here, run
+
+    docker build -t ingester .
+
+Then with the given docker-compose.yaml file, run
+
+    docker-compose up -d
+
+On my old Macbook Pro, this command is slightly different:
+
+    docker compose up -d
+
+Finally, run
+
+    source ingest_green_oct2019_zones
+
+This will run ingest_data.py on a python:3.9 VM and load
+tables in the ny_taxi database called "green_cab_trips"
+and zones.
+
+3. The pgadmin4 web interface is now available on localhost port 8080.
+We need to set up a server...and get to the Query Tool window. The query
+for question 3 is:
+
+SELECT
+    CASE
+    	WHEN trip_distance <= 1.0 THEN 'A) distance <= 1 mile'
+    	WHEN trip_distance <= 3.0 THEN 'B) 1 mile < distance <= 3 miles'
+    	WHEN trip_distance <= 7.0 THEN 'C) 3 miles < distance <= 7 miles'
+    	WHEN trip_distance <= 10.0 THEN 'D) 7 miles < distance <= 10 miles'
+    	ELSE 'E) distance > 10 miles' END AS trip_dist_stratum,
+    COUNT(1)
+    FROM green_cab_trips
+    WHERE 
+    	CAST(lpep_pickup_datetime AS DATE) >= '2019-10-01'
+    	AND
+    	CAST(lpep_dropoff_datetime AS DATE) < '2019-11-01'
+    GROUP BY trip_dist_stratum
+    ORDER BY trip_dist_stratum
+
+ A png screenshot of this query shows that the second given answer
+
+        104,802; 198,924; 109,603; 27,678; 35,189
+
+is the correct one.  
+
+
+4. Let's try this query:
+
+    SELECT CAST(lpep_pickup_datetime AS DATE) AS pickup_date,
+           MAX(trip_distance) AS max_trip_distance
+    FROM green_cab_trips
+    WHERE CAST(lpep_pickup_datetime AS DATE) >= CAST('2019-10-01' AS DATE) 
+       AND
+          CAST(lpep_pickup_datetime AS DATE) < CAST('2019-11-01' AS DATE)
+    GROUP BY pickup_date
+    ORDER BY max_trip_distance DESC
+
+Annoying that we have to violate "do not repeat yourself" with the WHERE
+clause. Standard sql doesn't let you use column aliases in WHERE clauses.
+
+The png screenshot shows the surprising answer that on 2019-10-31, somebody
+was picked up for a 515.89 mile long ride. Yowza! That's the outright winner.
+In a not even close second place was 2019-10-11 with a longest ride of
+95.78 miles
+
+5. Let's use this query:
+    SELECT z."Zone", COUNT(*) FROM zones z INNER JOIN green_cab_trips gct
+		ON z."LocationID" = gct."PULocationID"
+		WHERE CAST(gct.lpep_pickup_datetime AS DATE) = '2019-10-18'
+		GROUP BY z."Zone"
+		HAVING SUM(gct.total_amount) > 13000
+		ORDER BY COUNT(*) DESC
+		LiMIT 3
+    
+
+6. Let's try this query:
+    SELECT z."Zone", gct.tip_amount 
+        FROM green_cab_trips gct INNER JOIN zones z
+        ON z."LocationID = gct."DOLocationID"
+    WHERE gct.tip_amount = (
+        SELECT MAX(gct1.tip_amount)
+             FROM green_cab_trips gct1 INNER JOIN zones z1
+             ON z1."LocationID" = gct1."PULocation"
+        WHERE
+          CAST(gct1.lpep_pickup_datetime AS DATE) >= CAST('2019-10-01' AS DATE) 
+        AND
+          CAST(gct1.lpep_pickup_datetime AS DATE) < CAST('2019-11-01' AS DATE)
+        AND
+          z1."Zone" = 'East Harlem North')   
+
+    The tip amount is not required here, but I'm nosey. $83 and change is a
+    big tip for a cab ride (but maybe not one that goes over 500 miles!).
+
+    A screen shot of the run of this query shows that the answer is:
+
+        JFK Airport
+
+7. Ran out of time...have had trouble getting to used to the fact
+that VSC does not autosave files the way PyCharm does by default. And yes,
+just learned too late that you can change this on both IDEs. I guess it's
+only one point :(...
+
