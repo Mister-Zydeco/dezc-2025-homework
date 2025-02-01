@@ -16,29 +16,34 @@ To get 2020 and 2021, I ran one backfill each for green and red taxis that start
 #### Question 1: Answer: 128.3 MB
 From this [screenshot of the contents of my GCP bucket](my-gcp-bucket.png)
 
-Question 2: Answer: green_tripdata_2020-04.csv
+#### Question 2: Answer: green_tripdata_2020-04.csv
 
-Question 3: Answer: 24,648,499\
-To find the number of rows for all the Yellow Taxi CSV files for 2020, I tried to be careful. I first executed 
-
+#### Question 3: Answer: 24,648,499
+To find the number of rows for all the Yellow Taxi CSV files for 2020, I tried to be careful. To make sure there were no unexpected values for the filename field in yellow_tripdata
+```
 SELECT DISTINCT filename
-FROM \`dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata\`
+FROM dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata`
 ORDER BY filename;
+```
 
-to make sure there were no unexpected values for the filename field in yellow_trip. There are indeed only the expected 31 monthly filenames for Jan 2019 through July 2021 inclusive. It follows that the records from 2020 files are exactly those whose filename field contains the substring '2020':
+There are indeed only the expected 31 monthly filenames for Jan 2019 through July 2021 inclusive. It follows that the records from 2020 files are exactly those whose filename field contains the substring '2020':
 
+```
 SELECT COUNT(1)
-FROM \`dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata\`
+FROM `dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata`
 WHERE CONTAINS_SUBSTR(filename, '2020');
+```
 
-Question 4: Answer: 1,734,051
+#### Question 4: Answer: 1,734,051
 Just by repeating the process for question 3, but with the green_tripdata table instead of the yellow.
 
-Question 5: Answer: 1,925,152
+#### Question 5: Answer: 1,925,152
 From the query 
+```
 SELECT COUNT(1) 
-FROM \`dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata\`
+FROM `dataengineeringzoomcamp-dn.dn_dezc_kestra_dataset.yellow_tripdata`
 WHERE filename = 'yellow_tripdata_2021-03.csv'
+```
 
-Question 6: Answer: add a timezone propery set to America/New_York
+#### Question 6: Answer: add a timezone propery set to America/New_York
 I get this answer straight from the [Kestra page on Schedule Triggers](https://kestra.io/docs/workflow-components/triggers/schedule-trigger)
